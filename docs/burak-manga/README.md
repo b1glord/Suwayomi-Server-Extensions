@@ -65,6 +65,13 @@ Lint every touched Android module. For example:
 
     ./gradlew :src:tr:ruyamanga:lintRelease :src:tr:merlinscans:lintRelease
 
+For real compilation, a separate GitHub Actions workflow builds and lints
+only the two selected extensions on a hosted Android-compatible runner:
+[Targeted Gradle](../../.github/workflows/burak_manga_build.yml).
+It checks that both release APK outputs exist, but does not sign,
+publish, install into Suwayomi, or verify live site parsing. Its
+results must be inspected independently of the offline Python tests.
+
 Gradle requires a compatible JDK, Android SDK and dependencies. Never
 report builds as passing unless they were actually executed. No signed APK,
 private extension index or production release is created by this change.
