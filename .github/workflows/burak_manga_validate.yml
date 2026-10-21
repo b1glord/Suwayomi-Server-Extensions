@@ -27,6 +27,8 @@ jobs:
           python-version: '3.13'
       - name: Validate source catalog without website requests
         run: python scripts/burak_manga/validate_sources.py
+      - name: Install catalog protobuf dependency
+        run: python -m pip install 'protobuf>=6,<7'
       - name: Offline unit tests
         run: python -m unittest discover -s tests/burak_manga -v
       - name: Parse Windows validation script

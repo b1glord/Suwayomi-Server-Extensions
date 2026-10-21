@@ -95,7 +95,9 @@ def build_catalog(build_root, destination, fingerprint, commit):
         theme = info.get("theme")
         if theme not in ("madara", "initmanga"):
             raise ValueError(f"{name}: unsupported theme {theme}")
-        icon_url = f"{SOURCE_BASE}/lib-multisrc/{theme}/res/mipmap-xhdpi/ic_launcher.png"
+        icon_path = (f"lib-multisrc/{theme}/res/mipmap-xhdpi/ic_launcher.png"
+                     if theme == "madara" else "core/src/main/res/mipmap-xhdpi/ic_launcher.png")
+        icon_url = f"{SOURCE_BASE}/{icon_path}"
         source_infos = []
         for s in info["sources"]:
             source_infos.append(index_pb2.Source(
