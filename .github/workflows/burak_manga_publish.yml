@@ -1,0 +1,132 @@
+# Dosya Yolu: REPO_ROOT/.github/workflows/burak_manga_publish.yml
+# Amac: Sabit imzali Suwayomi katalogunu repo dalinda gunceller
+# Modul - YAML
+# Version: 0.2.0
+# Aciklama: Yayina alma degiskeni olmadan calismaz; surumlu asset ve proto katalog
+# Bagimli Oldugu Katman: Infrastructure
+name: Burak Manga - publish signed catalog
+on:
+  push:
+    branches:
+      - develop/burak-manga-extensions
+permissions:
+  contents: write
+concurrency:
+  group: burak-manga-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: ${{ vars.BURAK_MANGA_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/develop/burak-manga-extensions' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout trusted source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+      - name: Set up Java 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: '25'
+          distribution: temurin
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: true
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Require permanent signing identity
+        env:
+          KEY_BASE64: ${{ secrets.BURAK_MANGA_SIGNING_KEY_BASE64 }}
+          CERT: ${{ vars.BURAK_MANGA_SIGNING_CERT_SHA256 }}
+          ALIAS: ${{ secrets.BURAK_MANGA_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.BURAK_MANGA_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.BURAK_MANGA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEY_BASE64" || -z "$CERT" || -z "$ALIAS" || -z "$STORE_PASSWORD" || -z "$KEY_PASSWORD" ]]; then
+            echo 'PUBLISH_CREDENTIALS_MISSING: see docs/burak-manga/PUBLISHING.md' >&2
+            exit 1
+          fi
+          if ! [[ "$CERT" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            echo 'INVALID_CERTIFICATE_SHA256' >&2
+            exit 1
+          fi
+          printf '%s' "$KEY_BASE64" | base64 --decode > signingkey.jks
+          chmod 600 signingkey.jks
+          test -s signingkey.jks
+      - name: Build and lint exactly two source modules
+        env:
+          ALIAS: ${{ secrets.BURAK_MANGA_KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.BURAK_MANGA_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.BURAK_MANGA_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon \
+            :src:tr:ruyamanga:assembleRelease :src:tr:ruyamanga:lintRelease \
+            :src:tr:merlinscans:assembleRelease :src:tr:merlinscans:lintRelease
+      - name: Verify signed APK certificate identity
+        env:
+          EXPECTED_CERT: ${{ vars.BURAK_MANGA_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          for module in ruyamanga merlinscans; do
+            mapfile -d '' apks < <(find "src/tr/$module/build/outputs/apk/release" -maxdepth 1 -type f -name '*.apk' -print0)
+            test "${#apks[@]}" -eq 1
+            certificate="$("$APKSIGNER" verify --print-certs "${apks[0]}" | sed -nE 's/.*Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64}).*/\1/p' | head -n 1)"
+            if [ "${certificate,,}" != "${EXPECTED_CERT,,}" ]; then
+              echo "CERTIFICATE_FINGERPRINT_MISMATCH: $module" >&2
+              exit 1
+            fi
+          done
+      - name: Load published repo branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin refs/heads/repo:refs/remotes/origin/repo
+          git worktree add --detach "$RUNNER_TEMP/burak-manga-repo" refs/remotes/origin/repo
+      - name: Generate protobuf catalog and versioned assets
+        env:
+          CERT: ${{ vars.BURAK_MANGA_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'protobuf>=7.35.1,<8'
+          python scripts/burak_manga/build_catalog.py \
+            --build-root "$GITHUB_WORKSPACE" \
+            --out "$RUNNER_TEMP/burak-manga-repo" \
+            --fingerprint "$CERT" --commit "$GITHUB_SHA"
+          cd "$RUNNER_TEMP/burak-manga-repo"
+          find apk jar -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          python - <<'PY'
+          import gzip
+          import json
+          from pathlib import Path
+          obj = json.loads(Path('index.json').read_text(encoding='utf-8'))
+          assert len(obj['extensionList']['extensions']) == 2
+          assert len(gzip.decompress(Path('index.pb').read_bytes())) > 0
+          print('CATALOG_HAS_TWO_EXTENSIONS')
+          PY
+      - name: Publish updated catalog without force push
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/burak-manga-repo"
+          git -C "$OUT" config user.name 'Burak Manga CI'
+          git -C "$OUT" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$OUT" add README.md index.pb index.json repo.json BUILD_INFO.txt input_sha256.json SHA256SUMS.txt apk jar
+          if git -C "$OUT" diff --cached --quiet; then
+            echo 'CATALOG_UNCHANGED'
+          else
+            git -C "$OUT" commit -m "Publish signed extensions from ${GITHUB_SHA:0:12}"
+            git -C "$OUT" push origin HEAD:refs/heads/repo
+          fi
+      - name: Remove signing key from runner
+        if: always()
+        shell: bash
+        run: rm -f signingkey.jks
