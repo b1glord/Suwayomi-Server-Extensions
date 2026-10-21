@@ -111,3 +111,15 @@ https://github.com/b1glord/Suwayomi-Server/tree/develop/burak-manga
 
 Future source changes belong in focused PRs in this extension fork,
 not copied into the server repository.
+
+## Automatic personal extension catalog
+
+The project's core goal is a single URL that Suwayomi can refresh for
+signed extension updates. Intended catalog URL, AFTER initial publication:
+
+    https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/index.pb
+
+The repo branch is reserved now, but the index is not yet published:
+a permanent signing key must be configured and publishing enabled by
+the owner first. Full setup, backup, activation and rollback:
+[PUBLISHING.md](PUBLISHING.md). Temporary review APKs are not published.
