@@ -29,3 +29,11 @@ jobs:
         run: python scripts/burak_manga/validate_sources.py
       - name: Offline unit tests
         run: python -m unittest discover -s tests/burak_manga -v
+      - name: Parse Windows validation script
+        shell: pwsh
+        run: |
+          $Tokens = $null
+          $Errors = $null
+          $Path = Join-Path $PWD 'scripts/burak_manga/validate-windows.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$Errors) | Out-Null
+          if ($Errors.Count -gt 0) { $Errors | Format-List; exit 1 }

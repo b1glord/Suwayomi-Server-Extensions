@@ -39,6 +39,20 @@ runtime path. Existing checkouts are never reset or deleted automatically.
 
 ## Offline tests
 
+On Windows, no local Python installation is required if Docker Desktop is
+already running. From any directory, run the helper below (replace the
+checkout folder if you chose another location):
+
+    & 'E:\Docker\Suwayomi-Server-Extensions\scripts\burak_manga\validate-windows.ps1'
+
+The helper derives its repository root from its own location. It runs
+both checks inside the official python:3.13-alpine Docker image with the
+checkout mounted read-only. The first run downloads the Python image;
+later runs reuse it. It will not modify or restart the Suwayomi server.
+Use `-WhatIf` to inspect the planned operation without invoking Docker.
+
+You can still run tests directly if a local Python interpreter is installed:
+
     python scripts/burak_manga/validate_sources.py
     python -m unittest discover -s tests/burak_manga -v
 
