@@ -56,6 +56,19 @@ In fork Settings > Secrets and variables > Actions, configure:
 | Repository variable | BURAK_MANGA_SIGNING_CERT_SHA256 | Public 64-character fingerprint |
 | Repository variable | BURAK_MANGA_PUBLISH_ENABLED | true; set this LAST |
 
+The recommended Windows helper uploads the keystore and public identity
+without showing or committing secret data, and explicitly sets the publication
+variable to false. First inspect the public fingerprint with the keytool
+command above, then run:
+
+    & 'E:\Docker\Suwayomi-Server-Extensions\scripts\burak_manga\setup-signing-windows.ps1'
+
+The helper requires GitHub CLI authenticated with gh auth login. It prompts
+for the PUBLIC certificate fingerprint only, then points you to the GitHub
+web settings for the two password secrets. Never pass secret passwords
+as command arguments. Set the publication variable to true only AFTER
+all settings are confirmed and you are ready for the first publish.
+
 If GitHub CLI (gh) is installed and authenticated, securely upload the
 keystore file without printing the base64 in the terminal:
 

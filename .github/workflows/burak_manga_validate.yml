@@ -39,3 +39,6 @@ jobs:
           $Path = Join-Path $PWD 'scripts/burak_manga/validate-windows.ps1'
           [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$Errors) | Out-Null
           if ($Errors.Count -gt 0) { $Errors | Format-List; exit 1 }
+          $SetupPath = Join-Path $PWD 'scripts/burak_manga/setup-signing-windows.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($SetupPath, [ref]$Tokens, [ref]$Errors) | Out-Null
+          if ($Errors.Count -gt 0) { $Errors | Format-List; exit 1 }
