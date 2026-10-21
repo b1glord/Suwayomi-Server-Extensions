@@ -119,7 +119,7 @@ jobs:
           OUT="$RUNNER_TEMP/burak-manga-repo"
           git -C "$OUT" config user.name 'Burak Manga CI'
           git -C "$OUT" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$OUT" add index.pb index.json repo.json BUILD_INFO.txt SHA256SUMS.txt apk jar
+          git -C "$OUT" add README.md index.pb index.json repo.json BUILD_INFO.txt input_sha256.json SHA256SUMS.txt apk jar
           if git -C "$OUT" diff --cached --quiet; then
             echo 'CATALOG_UNCHANGED'
           else
