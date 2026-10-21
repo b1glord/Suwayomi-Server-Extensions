@@ -90,12 +90,14 @@ URL above in Suwayomi's extension repository settings and refresh.
 Future source changes to the development branch are automatically built
 and published to the SAME URL.
 
-IMPORTANT: The initial implementation rebuilds BOTH modules on every
-publish. After the first publication, bump versionCode for both extensions
-before each publishing push (or keep publishing disabled while editing
-unrelated files). An unchanged versionCode is intentionally rejected to
-prevent ambiguous and unsafe upgrades. The workflow can be made incremental
-later without changing the catalog URL.
+The CI may compile both selected modules, but the publisher compares each
+module's source/theme digest against the previous catalog. It retains the
+existing signed APK/JAR URL when that module has not changed, so **Rüya Manga
+and Merlin Scans update independently**. When a module changes, increment
+its versionCode before pushing. Source changes with unchanged versionCode,
+certificate rotations and version downgrades are rejected. Shared libraries
+or build logic changes can affect both APKs: bump both version codes in
+that case; broader shared-dependency checks remain a review responsibility.
 
 Pause distribution at any time by setting BURAK_MANGA_PUBLISH_ENABLED=false.
 Use only sources and content for which you have necessary permission.

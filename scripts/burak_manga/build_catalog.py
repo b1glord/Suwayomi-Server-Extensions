@@ -7,6 +7,7 @@
 """Generate a Keiyoushi/Suwayomi extension catalog. Publishing is a separate step."""
 import argparse
 import gzip
+import hashlib
 import json
 import re
 import shutil
@@ -56,6 +57,22 @@ def load_info(build_root, name):
     return info, info_file.parent
 
 
+def module_digest(root, name, theme):
+    """Only inputs for this source and its theme; exclude generated build output."""
+    root = Path(root).resolve()
+    hasher = hashlib.sha256()
+    for part in (root / "src" / "tr" / name, root / "lib-multisrc" / theme):
+        if not part.is_dir():
+            raise ValueError(f"{name}: source or theme directory missing")
+        for path in sorted(part.rglob("*")):
+            if not path.is_file() or "build" in path.relative_to(root).parts:
+                continue
+            relative = path.relative_to(root).as_posix()
+            hasher.update(relative.encode("utf-8") + b"\x00")
+            hasher.update(path.read_bytes())
+    return hasher.hexdigest()
+
+
 def build_catalog(build_root, destination, fingerprint, commit):
     fingerprint = checked_hex(fingerprint)
     if not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
@@ -63,12 +80,17 @@ def build_catalog(build_root, destination, fingerprint, commit):
     build_root, destination = Path(build_root), Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     previous = {}
+    fingerprints = {}
+    last_inputs = destination / "input_sha256.json"
     old_path = destination / "index.json"
     if old_path.exists():
         previous_index = json_format.Parse(old_path.read_text(encoding="utf-8"), index_pb2.Index())
         if previous_index.signingKey != fingerprint:
             raise ValueError("Refusing to rotate the repository signing key")
         previous = {e.packageName: e for e in previous_index.extensionList.extensions}
+        if not last_inputs.is_file():
+            raise ValueError("Missing prior input fingerprints; refusing ambiguous update")
+        fingerprints = json.loads(last_inputs.read_text(encoding="utf-8"))
         if set(previous) - {f"eu.kanade.tachiyomi.extension.tr.{s}" for s in MODULES}:
             raise ValueError("Unexpected existing extension entries; refusing to remove them")
 
@@ -79,9 +101,27 @@ def build_catalog(build_root, destination, fingerprint, commit):
         version = info["versionCode"]
         if package in previous and version < previous[package].versionCode:
             raise ValueError(f"{name}: versionCode downgrade forbidden")
-        # Reusing a version for changed binary output breaks client update detection.
+        theme = info.get("theme")
+        if theme not in ("madara", "initmanga"):
+            raise ValueError(f"{name}: unsupported theme {theme}")
+        digest = module_digest(build_root, name, theme)
         if package in previous and version == previous[package].versionCode:
-            raise ValueError(f"{name}: increment versionCode before republishing")
+            old = previous[package]
+            if fingerprints.get(name) != digest:
+                raise ValueError(f"{name}: source changed; increment versionCode")
+            if (old.name != info["name"] or old.versionName != info["versionName"]
+                    or old.extensionLib != info["extensionLib"]
+                    or old.contentWarning != info["contentWarning"]
+                    or len(old.sources) != len(info["sources"])):
+                raise ValueError(f"{name}: metadata changed without version bump")
+            for recorded, current in zip(old.sources, info["sources"]):
+                if (recorded.id != current["id"] or recorded.name != current["name"]
+                        or recorded.language != current["lang"]
+                        or recorded.homeUrl != current["baseUrl"]
+                        or list(recorded.mirrorUrls) != current.get("mirrorUrls", [])):
+                    raise ValueError(f"{name}: source metadata changed without version bump")
+            extensions.append(old)
+            continue
 
         resource_urls = {}
         for kind in ("apk", "jar"):
@@ -92,9 +132,6 @@ def build_catalog(build_root, destination, fingerprint, commit):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
             resource_urls[kind] = f"{CATALOG_BASE}/{rel}"
-        theme = info.get("theme")
-        if theme not in ("madara", "initmanga"):
-            raise ValueError(f"{name}: unsupported theme {theme}")
         icon_path = (f"lib-multisrc/{theme}/res/mipmap-xhdpi/ic_launcher.png"
                      if theme == "madara" else "core/src/main/res/mipmap-xhdpi/ic_launcher.png")
         icon_url = f"{SOURCE_BASE}/{icon_path}"
@@ -135,7 +172,21 @@ def build_catalog(build_root, destination, fingerprint, commit):
                              "signingKeyFingerprint": fingerprint}}, indent=2) + "\n",
         encoding="utf-8",
     )
+    (destination / "input_sha256.json").write_text(
+        json.dumps({name: module_digest(build_root, name, theme)
+                    for name, theme in (("ruyamanga", "madara"), ("merlinscans", "initmanga"))},
+                   indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     (destination / "BUILD_INFO.txt").write_text(f"source_commit={commit}\nmodules={','.join(MODULES)}\n", encoding="utf-8")
+    (destination / "README.md").write_text(
+        "# Burak Manga Extensions - signed catalog\n\n"
+        "Suwayomi index: https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/index.pb\n\n"
+        "Automatically maintained from the development branch after owner signing setup.\n"
+        "Source: https://github.com/b1glord/Suwayomi-Server-Extensions/tree/develop/burak-manga-extensions\n"
+        f"Certificate SHA-256: {fingerprint}\n",
+        encoding="utf-8",
+    )
     return index
 
 

@@ -29,6 +29,10 @@ class CatalogTests(unittest.TestCase):
         for name, theme in (("ruyamanga", "madara"), ("merlinscans", "initmanga")):
             d = self.build_root / "src" / "tr" / name / "build"
             d.mkdir(parents=True)
+            (d.parent / "build.gradle.kts").write_text("keiyoushi { versionCode = 101 }", encoding="utf-8")
+            theme_dir = self.build_root / "lib-multisrc" / theme
+            theme_dir.mkdir(parents=True, exist_ok=True)
+            (theme_dir / "build.gradle.kts").write_text("theme", encoding="utf-8")
             (d / "keiyoushi-source-info.json").write_text(json.dumps({
                 "module": f"tr.{name}",
                 "theme": theme,
@@ -56,10 +60,32 @@ class CatalogTests(unittest.TestCase):
         ))
         self.assertTrue((self.output / "repo.json").is_file())
 
-    def test_repeated_publication_same_version_rejected(self):
+    def test_repeated_publication_same_version_reuses_links(self):
+        first = build_catalog(self.build_root, self.output, CERT, SHA)
+        second = build_catalog(self.build_root, self.output, CERT, SHA)
+        self.assertEqual(first, second)
+
+    def test_changed_source_requires_version_bump(self):
         build_catalog(self.build_root, self.output, CERT, SHA)
-        with self.assertRaisesRegex(ValueError, "increment versionCode"):
+        path = self.build_root / "src" / "tr" / "ruyamanga" / "build.gradle.kts"
+        path.write_text("keiyoushi { versionCode = 102 }", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source changed"):
             build_catalog(self.build_root, self.output, CERT, SHA)
+
+    def test_independent_version_update(self):
+        before = build_catalog(self.build_root, self.output, CERT, SHA)
+        d = self.build_root / "src" / "tr" / "ruyamanga" / "build"
+        path = d / "keiyoushi-source-info.json"
+        info = json.loads(path.read_text(encoding="utf-8"))
+        info["versionCode"] += 1
+        path.write_text(json.dumps(info), encoding="utf-8")
+        source = d.parent / "build.gradle.kts"
+        source.write_text("keiyoushi { versionCode = 102 }", encoding="utf-8")
+        after = build_catalog(self.build_root, self.output, CERT, SHA)
+        self.assertEqual(after.extensionList.extensions[1].resources.apkUrl,
+                         before.extensionList.extensions[1].resources.apkUrl)
+        self.assertNotEqual(after.extensionList.extensions[0].resources.apkUrl,
+                            before.extensionList.extensions[0].resources.apkUrl)
 
     def test_signing_key_rotation_rejected(self):
         build_catalog(self.build_root, self.output, CERT, SHA)
