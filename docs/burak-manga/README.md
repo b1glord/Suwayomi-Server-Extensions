@@ -68,13 +68,31 @@ Lint every touched Android module. For example:
 For real compilation, a separate GitHub Actions workflow builds and lints
 only the two selected extensions on a hosted Android-compatible runner:
 [Targeted Gradle](../../.github/workflows/burak_manga_build.yml).
-It checks that both release APK outputs exist, but does not sign,
-publish, install into Suwayomi, or verify live site parsing. Its
-results must be inspected independently of the offline Python tests.
+It runs release APK assembly, lint, Android APK signature verification and
+stages two temporary debug-signed APKs as a GitHub Actions artifact named
+`burak-manga-test-apks` (3-day retention). This uses the Keiyoushi build
+plugin's fallback debug signing key, not a managed production/release key.
+
+To inspect the files: open the targeted Gradle workflow run in GitHub,
+find `burak-manga-test-apks` under Artifacts, download the ZIP and extract
+the two APKs plus `SHA256SUMS.txt` and `BUILD_INFO.txt`. On Windows,
+verify downloaded file hashes with `Get-FileHash -Algorithm SHA256`.
+
+Only with explicit manual approval, use Suwayomi WebUI's
+Browse > Extensions > Add/Install from file feature to try one of the APKs.
+The UI location depends on the installed WebUI version. Do not uninstall
+or replace an existing official extension simply to try a debug-signed APK:
+the signing key differs and automatic upgrade paths may not work.
+Back up Suwayomi's persistent data before manual extension changes.
+
+The artifact does **not** install the APK, publish an extension repository
+index, provide a stable signing identity, or prove live manga/chapter parsing.
+Never confuse a temporary artifact with a GitHub Release.
 
 Gradle requires a compatible JDK, Android SDK and dependencies. Never
-report builds as passing unless they were actually executed. No signed APK,
-private extension index or production release is created by this change.
+report builds as passing unless they were actually executed.
+No production-signed APK, private extension index or production release is
+created by this change.
 
 ## Initial sources
 

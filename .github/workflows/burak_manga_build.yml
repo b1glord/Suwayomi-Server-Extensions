@@ -43,14 +43,36 @@ jobs:
             :src:tr:ruyamanga:lintRelease \
             :src:tr:merlinscans:assembleRelease \
             :src:tr:merlinscans:lintRelease
-      - name: Check generated release APKs
+      - name: Stage and verify review-only APKs
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p review-apks
           for name in ruyamanga merlinscans; do
             dir="src/tr/$name/build/outputs/apk/release"
-            if ! find "$dir" -maxdepth 1 -type f -name '*.apk' -print -quit | grep -q .; then
-              echo "MISSING_APK: $name" >&2
+            mapfile -d '' apks < <(find "$dir" -maxdepth 1 -type f -name '*.apk' -print0)
+            if [ "${#apks[@]}" -ne 1 ]; then
+              echo "EXPECTED_EXACTLY_ONE_APK_FOR: $name" >&2
               exit 1
             fi
+            cp -- "${apks[0]}" "review-apks/$name.apk"
           done
+          (
+            cd review-apks
+            sha256sum ruyamanga.apk merlinscans.apk > SHA256SUMS.txt
+            printf 'commit=%s\nkind=temporary-debug-signed-test-apks\n' "$GITHUB_SHA" > BUILD_INFO.txt
+          )
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APK_SIGNER" ]; then
+            echo 'ANDROID_APKSIGNER_NOT_FOUND' >&2
+            exit 1
+          fi
+          "$APK_SIGNER" verify --verbose review-apks/ruyamanga.apk
+          "$APK_SIGNER" verify --verbose review-apks/merlinscans.apk
+      - name: Upload temporary test APKs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: burak-manga-test-apks
+          path: review-apks/
+          if-no-files-found: error
+          retention-days: 3
