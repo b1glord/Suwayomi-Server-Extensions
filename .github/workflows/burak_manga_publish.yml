@@ -96,7 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install 'protobuf>=6,<7'
+          python -m pip install 'protobuf>=7.35.1,<8'
           python scripts/burak_manga/build_catalog.py \
             --build-root "$GITHUB_WORKSPACE" \
             --out "$RUNNER_TEMP/burak-manga-repo" \

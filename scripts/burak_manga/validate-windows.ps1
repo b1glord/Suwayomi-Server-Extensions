@@ -39,7 +39,7 @@ if ($PSCmdlet.ShouldProcess($RepoRoot, "Run offline source checks in $Image")) {
     }
 
     Write-Host '=== UNIT TESTS ===' -ForegroundColor Cyan
-    & docker run --rm --pull=missing --mount $Mount --workdir /workspace $Image sh -ec "python -m pip install --disable-pip-version-check -q 'protobuf>=6,<7' && python -m unittest discover -s tests/burak_manga -v"
+    & docker run --rm --pull=missing --mount $Mount --workdir /workspace $Image sh -ec "python -m pip install --disable-pip-version-check -q 'protobuf>=7.35.1,<8' && python -m unittest discover -s tests/burak_manga -v"
     if ($LASTEXITCODE -ne 0) {
         throw 'UNIT_TESTS_FAILED'
     }
