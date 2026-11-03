@@ -1,0 +1,2 @@
+source_commit=f11b3247be2a5e1585c41efa1d610264a0f0632c
+modules=ruyamanga,merlinscans

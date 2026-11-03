@@ -1,9 +1,7 @@
-# Burak Manga Extensions — published catalog
+# Burak Manga Extensions - signed catalog
 
-This branch is reserved for the generated Suwayomi-compatible extension index and signed packages.
+Suwayomi index: https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/index.pb
 
-STATUS: Not initialized. `index.pb` is intentionally absent until the owner configures a stable signing key and enables the gated publisher in GitHub Actions.
-
-Source code: https://github.com/b1glord/Suwayomi-Server-Extensions/tree/develop/burak-manga-extensions
-
-Do not manually upload APKs or reuse the temporary debug-signed review artifacts.
+Automatically maintained from the development branch after owner signing setup.
+Source: https://github.com/b1glord/Suwayomi-Server-Extensions/tree/develop/burak-manga-extensions
+Certificate SHA-256: 0b8d2014912d3113754f3aa3a9d755899f041a040d2fd079fc0c630eec062031

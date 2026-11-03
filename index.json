@@ -1,0 +1,54 @@
+{
+  "name": "Burak Manga Extensions",
+  "badgeLabel": "BRK",
+  "signingKey": "0b8d2014912d3113754f3aa3a9d755899f041a040d2fd079fc0c630eec062031",
+  "contact": {
+    "website": "https://github.com/b1glord/Suwayomi-Server-Extensions"
+  },
+  "extensionList": {
+    "extensions": [
+      {
+        "name": "R\u00fcya Manga",
+        "packageName": "eu.kanade.tachiyomi.extension.tr.ruyamanga",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/apk/ruyamanga-v106060-f11b3247be2a.apk",
+          "iconUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/develop/burak-manga-extensions/lib-multisrc/madara/res/mipmap-xhdpi/ic_launcher.png",
+          "jarUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/jar/ruyamanga-v106060-f11b3247be2a.jar"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106060",
+        "versionName": "1.6.60",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "5786550835901373927",
+            "name": "R\u00fcya Manga",
+            "language": "tr",
+            "homeUrl": "https://www.ruyamanga2.com"
+          }
+        ]
+      },
+      {
+        "name": "Merlin Scans",
+        "packageName": "eu.kanade.tachiyomi.extension.tr.merlinscans",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/apk/merlinscans-v106004-f11b3247be2a.apk",
+          "iconUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/develop/burak-manga-extensions/core/src/main/res/mipmap-xhdpi/ic_launcher.png",
+          "jarUrl": "https://raw.githubusercontent.com/b1glord/Suwayomi-Server-Extensions/repo/jar/merlinscans-v106004-f11b3247be2a.jar"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106004",
+        "versionName": "1.6.4",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "4883620005315879682",
+            "name": "Merlin Scans",
+            "language": "tr",
+            "homeUrl": "https://merlintoon.com"
+          }
+        ]
+      }
+    ]
+  }
+}
