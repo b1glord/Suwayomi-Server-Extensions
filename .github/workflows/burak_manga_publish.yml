@@ -98,9 +98,20 @@ jobs:
           for module in ruyamanga merlinscans; do
             mapfile -d '' apks < <(find "src/tr/$module/build/outputs/apk/release" -maxdepth 1 -type f -name '*.apk' -print0)
             test "${#apks[@]}" -eq 1
-            certificate="$("$APKSIGNER" verify --print-certs "${apks[0]}" | sed -nE 's/.*Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64}).*/\1/p' | head -n 1)"
+            # Keep the unmodified public certificate report for parse diagnostics.
+            signer_report="$("$APKSIGNER" verify --print-certs "${apks[0]}")"
+            certificate="$(printf '%s\n' "$signer_report" | awk '
+              tolower($0) ~ /certificate.*sha.?256.*digest/ {
+                sub(/^.*digest:[[:space:]]*/, "")
+                gsub(/[^[:xdigit:]]/, "")
+                print tolower($0)
+                exit
+              }
+            ')"
             if [[ ! "$certificate" =~ ^[0-9a-fA-F]{64}$ ]]; then
               echo "APK_CERTIFICATE_SHA256_PARSE_FAILED: $module" >&2
+              echo "Public apksigner report (no private keys):" >&2
+              printf '%s\n' "$signer_report" | head -n 30 >&2
               exit 1
             fi
             if [ "${certificate,,}" != "${EXPECTED_CERT,,}" ]; then
